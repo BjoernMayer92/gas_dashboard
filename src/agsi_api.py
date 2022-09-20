@@ -76,12 +76,13 @@ def generate_query_string_list(data_eic_listing, api_string, country_name="Germa
                 query_string_parameter_dict["country"],
                 query_string_parameter_dict["company"],
                 query_string_parameter_dict["facility"],
+                facility["name"],
                 query_string
                 ])
 
 
 
-    return pd.DataFrame(query_string_parameter_list, columns = ["country","company","facility","query_string"])
+    return pd.DataFrame(query_string_parameter_list, columns = ["country","company","facility","name","query_string"])
 
 def request_query_as_json(query_string, api_key=keys.AGSI):
     """_summary_

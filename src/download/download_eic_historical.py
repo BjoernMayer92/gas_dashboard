@@ -10,7 +10,6 @@ conf_dir = os.path.join(root_dir,"config")
 sys.path.append(str(conf_dir))
 
 import config
-import keys
 
 extraction_keyword_list = config.AGSI_EXTRACTION_KEYWORD_LIST
 metadata_keyword_list = config.AGSI_METADATA_KEYWORD_LIST
