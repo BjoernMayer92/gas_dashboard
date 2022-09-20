@@ -31,6 +31,14 @@ def generate_query_string(api_string, query_string_parameter_dict):
     return query_string
 
 def decompose_query_string(query_string):
+    """_summary_
+
+    Args:
+        query_string (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     query_string_parameter_string_list = query_string.split("&")[1:]
     query_string_parameter_dict = {}
 
@@ -51,10 +59,11 @@ def generate_query_string_list(data_eic_listing, api_string, country_name="Germa
     Returns:
         _type_: _description_
     """
-    query_string_list = []
     
     company_list = data_eic_listing["SSO"]["Europe"][country_name]
+    query_string_parameter_list = []
     query_string_parameter_dict = {}
+
     for company in company_list:
         query_string_parameter_dict["company"] = company["eic"]
         facility_list = company["facilities"]
@@ -62,11 +71,28 @@ def generate_query_string_list(data_eic_listing, api_string, country_name="Germa
             query_string_parameter_dict["facility"] = facility["eic"]
             query_string_parameter_dict["country"] = facility["country"]["code"]
             query_string = generate_query_string(api_string, query_string_parameter_dict)
+            
+            query_string_parameter_list.append([
+                query_string_parameter_dict["country"],
+                query_string_parameter_dict["company"],
+                query_string_parameter_dict["facility"],
+                query_string
+                ])
 
-            query_string_list.append(query_string)
-    return query_string_list
+
+
+    return pd.DataFrame(query_string_parameter_list, columns = ["country","company","facility","query_string"])
 
 def request_query_as_json(query_string, api_key=keys.AGSI):
+    """_summary_
+
+    Args:
+        query_string (_type_): _description_
+        api_key (_type_, optional): _description_. Defaults to keys.AGSI.
+
+    Returns:
+        _type_: _description_
+    """
     header = {}
     header["x-key"] = keys.AGSI
     
@@ -76,6 +102,16 @@ def request_query_as_json(query_string, api_key=keys.AGSI):
     return data
 
 def curl_data_from_query(query_string, extraction_keyword_list, metadata_keyword_list):
+    """_summary_
+
+    Args:
+        query_string (_type_): _description_
+        extraction_keyword_list (_type_): _description_
+        metadata_keyword_list (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
 
     initial_request_data = request_query_as_json(query_string)
     number_of_pages = initial_request_data["last_page"]

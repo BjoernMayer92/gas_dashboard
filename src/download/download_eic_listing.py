@@ -24,3 +24,8 @@ if __name__ == '__main__':
 
     with open(file_eic_listing , 'w') as file:
         json.dump(data_eic_listing, file)
+
+    facility_query_parameter_list = agsi.generate_query_string_list(data_eic_listing, api_string=config.AGSI_API_STRING)
+    
+    fille_facility_queries = os.path.join(config.DATA_AGSI_DIR,"Query_listing.json")
+    facility_query_parameter_list.to_json(fille_facility_queries)
