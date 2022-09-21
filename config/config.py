@@ -11,6 +11,8 @@ SRC_DIR = os.path.join(ROOT_DIR,"src")
 AGSI_METADATA_KEYWORD_LIST = ["name","url","injectionCapacity","withdrawalCapacity"]
 AGSI_EXTRACTION_KEYWORD_LIST = ["gasDayStart","gasInStorage","injection","withdrawal","workingGasVolume","status","trend","full"]
 AGSI_API_STRING= "https://agsi.gie.eu/api?"
+GOOGLE_API_STRING="https://maps.googleapis.com/maps/api/place/textsearch/json?"
+
 
 if __name__ == '__main__':
     print("ROOT_DIR:")
