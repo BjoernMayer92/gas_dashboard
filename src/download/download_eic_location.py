@@ -1,6 +1,3 @@
-    """
-    """
-
 
 import sys
 import os
@@ -32,7 +29,8 @@ if __name__=='__main__':
     data = pd.read_json(file_facility_queries)
 
     location_name_list = []
-    location_coordinates_list = []
+    location_coordinates_lat_list = []
+    location_coordinates_lon_list = []
 
     for name in data["name"]:    
         query_string_parameter_dict = {"input":name, "key":keys.GOOGLE}
@@ -48,11 +46,15 @@ if __name__=='__main__':
             location_name = resp_json["results"][0]["name"]
         else: 
             location_name  = "NA"
-            location_coordinates = "NA"
+            location_coordinates = {"lat":"NA","lng":"NA"}
+        
 
         location_name_list.append(location_name)
-        location_coordinates_list.append(location_coordinates)
-
+        location_coordinates_lat_list.append(location_coordinates["lat"])
+        location_coordinates_lon_list.append(location_coordinates["lng"])
+    
     data["location_name"] = location_name_list
-    data["location_coordinates"] = location_coordinates_list 
+    data["lat"] = location_coordinates_lat_list 
+    data["lon"] = location_coordinates_lon_list 
+    
     data.to_json(file_facility_queries)
