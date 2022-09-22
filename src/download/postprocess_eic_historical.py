@@ -13,7 +13,6 @@ import config
 
 extraction_keyword_list = config.AGSI_EXTRACTION_KEYWORD_LIST
 metadata_keyword_list = config.AGSI_METADATA_KEYWORD_LIST
-extraction_keyword_type = config.AGSI_EXTRACTION_KEYWORD_TYPE
 api_string = config.AGSI_API_STRING
 sys.path.append(str(config.SRC_DIR))
 
@@ -30,5 +29,5 @@ if __name__ == '__main__':
 
         print("Downloading Historical Data for "+str(facility_filename)+" :")
         
-        facility_dataseries = agsi.curl_data_from_query(facility_query_string, extraction_keyword_list, extraction_keyword_type, metadata_keyword_list)
+        facility_dataseries = agsi.curl_data_from_query(facility_query_string, extraction_keyword_list, metadata_keyword_list)
         facility_dataseries.to_json(facility_file)
