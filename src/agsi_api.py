@@ -2,6 +2,7 @@ import os, sys
 import requests
 import pandas as pd
 import json
+import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
@@ -102,7 +103,7 @@ def request_query_as_json(query_string, api_key=keys.AGSI):
 
     return data
 
-def curl_data_from_query(query_string, extraction_keyword_list, metadata_keyword_list):
+def curl_data_from_query(query_string, extraction_keyword_list, extraction_keyword_type, metadata_keyword_list):
     """_summary_
 
     Args:
@@ -127,7 +128,7 @@ def curl_data_from_query(query_string, extraction_keyword_list, metadata_keyword
     # Query all pages
     page_dictionary_list = []
     for page_number in tqdm(range(number_of_pages)):
-        query_string_page="&".join([query_string,"page="+str(page_number)])
+        query_string_page="&".join([query_string,"page="+str(page_number+1)])
         page_dictionary_list.append(request_query_as_json(query_string_page))
     
     # Extract entries from the pages
@@ -136,7 +137,10 @@ def curl_data_from_query(query_string, extraction_keyword_list, metadata_keyword
         for datapoint in page_dictionary["data"]:
             datapoint_list = []
             for keyword in extraction_keyword_list: 
-                datapoint_list.append(datapoint[keyword])
+                data_tmp = datapoint[keyword]
+                if data_tmp== "-":
+                    data_tmp= np.nan
+                datapoint_list.append(extraction_keyword_type[keyword](data_tmp))
             dataseries_list.append(datapoint_list)
     
     dataseries_df = pd.DataFrame(dataseries_list, columns = extraction_keyword_list)
