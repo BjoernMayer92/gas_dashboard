@@ -103,7 +103,10 @@ def request_query_as_json(query_string, api_key=keys.AGSI):
 
     return data
 
-def curl_data_from_query(query_string, extraction_keyword_list, extraction_keyword_type, metadata_keyword_list):
+
+
+
+def curl_data_from_query_in_db(conn, query_string, table_name, extraction_keyword_list, extraction_keyword_type):
     """_summary_
 
     Args:
@@ -114,26 +117,18 @@ def curl_data_from_query(query_string, extraction_keyword_list, extraction_keywo
     Returns:
         _type_: _description_
     """
+    
 
     initial_request_data = request_query_as_json(query_string)
     number_of_pages = initial_request_data["last_page"]
     
-    # Extract Metadata from first entry
-    metadata_dict = {}
-    initial_request_data_first_entry = initial_request_data["data"][0]
-
-    for metadata_keyword in metadata_keyword_list:
-        metadata_dict[metadata_keyword] = initial_request_data_first_entry[metadata_keyword]
-        
+    cur = conn.cursor()
+    
     # Query all pages
-    page_dictionary_list = []
     for page_number in tqdm(range(number_of_pages)):
         query_string_page="&".join([query_string,"page="+str(page_number+1)])
-        page_dictionary_list.append(request_query_as_json(query_string_page))
-    
-    # Extract entries from the pages
-    dataseries_list = []
-    for page_dictionary in page_dictionary_list: 
+        page_dictionary = request_query_as_json(query_string_page)
+         
         for datapoint in page_dictionary["data"]:
             datapoint_list = []
             for keyword in extraction_keyword_list: 
@@ -141,9 +136,8 @@ def curl_data_from_query(query_string, extraction_keyword_list, extraction_keywo
                 if data_tmp== "-":
                     data_tmp= np.nan
                 datapoint_list.append(extraction_keyword_type[keyword](data_tmp))
-            dataseries_list.append(datapoint_list)
-    
-    dataseries_df = pd.DataFrame(dataseries_list, columns = extraction_keyword_list)
-    dataseries_df.attrs = metadata_dict
-    return dataseries_df
-    
+                
+            sql_insert_string = ''' INSERT INTO {}{}
+            VALUES(?,?,?,?,?,?,?,?) '''.format(table_name, tuple(extraction_keyword_list))            
+            cur.execute(sql_insert_string, tuple(datapoint_list))
+    conn.commit()
