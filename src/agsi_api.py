@@ -5,6 +5,7 @@ import json
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+import sqlite_functions
 
 root_dir = Path.cwd().parents[0]
 conf_dir = os.path.join(root_dir,"config")
@@ -122,11 +123,11 @@ def curl_data_from_query_in_db(conn, query_string, table_name, extraction_keywor
     initial_request_data = request_query_as_json(query_string)
     number_of_pages = initial_request_data["last_page"]
     
-    cur = conn.cursor()
     
     # Query all pages
     for page_number in tqdm(range(number_of_pages)):
         query_string_page="&".join([query_string,"page="+str(page_number+1)])
+        
         page_dictionary = request_query_as_json(query_string_page)
          
         for datapoint in page_dictionary["data"]:
@@ -136,8 +137,7 @@ def curl_data_from_query_in_db(conn, query_string, table_name, extraction_keywor
                 if data_tmp== "-":
                     data_tmp= np.nan
                 datapoint_list.append(extraction_keyword_type[keyword](data_tmp))
-                
-            sql_insert_string = ''' INSERT INTO {}{}
-            VALUES(?,?,?,?,?,?,?,?) '''.format(table_name, tuple(extraction_keyword_list))            
-            cur.execute(sql_insert_string, tuple(datapoint_list))
+            
+            sqlite_functions.insert_row(conn, table_name, col_name_list = extraction_keyword_list, data = datapoint_list)
+
     conn.commit()
