@@ -2,7 +2,7 @@ import dash
 import plotly.graph_objects as go
 import plotly.express as px 
 import dash_bootstrap_components as dbc
-
+from dash_bootstrap_templates import load_figure_template
 
 
 from dash import html
@@ -13,7 +13,7 @@ import sys
 import os
 from pathlib import Path
 import pandas as pd
-
+import sqlite3
 
 
 root_dir = Path.cwd().parents[1]
@@ -24,23 +24,57 @@ sys.path.append(str(conf_dir))
 
 import config
 
-file_facility_queries = os.path.join(config.DATA_AGSI_DIR,"Query_listing.json")
 
-data = pd.read_json(file_facility_queries)
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
+load_figure_template("darkly")
+
+con = sqlite3.connect(config.SQL_DATABASE_FILE)
+
+data = pd.read_sql_query("SELECT * from eic_listing", con)
 
 fig =px.scatter_geo(data,
     lon = "lon",
     lat = "lat",
     hover_name = "name",
+    scope="europe",
     hover_data = ["country","company","facility"])
 
 fig.update_layout(
-    geo_scope='europe'
+    geo_scope='world',
+    margin=dict(l=0, r=0, t=0, b=0),
+
 )
 
+fig.update_geos(
+    center={"lat":51.1642292, "lon":10},
+    lataxis_range=[45,55],
+    lonaxis_range=[5,15],
+    resolution=50,
+    showcoastlines=True, coastlinecolor="RebeccaPurple",
+    showcountries=True,
+    )
+
+app.layout = dbc.Container(
+    [
+        html.H1("Gas Storages in Germany"),
+        html.Hr(),
+        dbc.Row( 
+            [
+                dbc.Col(dcc.Graph(id="map",responsive=True, figure=fig), md=4),
+                dbc.Col(dcc.Graph(id="timeseries"),   md=8),
+            ],
+            align="center",  
+        ),
+    ],
+    fluid=True,
+    className="dbc"
+)
+
+
+
+"""
 app.layout = html.Div(
 children=[
     html.H1(children='Gas Storages in Germany'),
@@ -60,6 +94,8 @@ children=[
 ], style={"display":"flex"})
 ], style={"width":"100vw","height":"100vh"})
 
+"""
+
 @app.callback(Output('timeseries', 'figure'),Input('map', 'hoverData'))
 def update_y_timeseries(hoverData):
     country = hoverData["points"][0]["customdata"][0]
@@ -71,10 +107,10 @@ def update_y_timeseries(hoverData):
     
     timeseries_df = pd.read_json(os.path.join(timeseries_path, timeseries_filename))
 
-    fig = px.line(timeseries_df, x='gasDayStart', y=['full'])
+    fig = px.line(timeseries_df, x='gasDayStart', y=['workingGasVolume'])
 
     return fig
 
-    print(timeseries_df)
+
 if __name__ == '__main__':
     app.run_server(debug=True)
