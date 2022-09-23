@@ -1,3 +1,4 @@
 data/
 config/keys.py
 __pycache__
+*.db
