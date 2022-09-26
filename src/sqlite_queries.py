@@ -60,3 +60,11 @@ insert_timeseries_query = """
         INSERT INTO '{}' (gasDayStart, gasInStorage, injection, withdrawal, workingGasVolume, injectionCapacity, withdrawalCapacity, status, trend, full)
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
+
+def add_cols(cursor, table_name, col_dict):
+    table_info = cursor.execute("PRAGMA TABLE_INFO({})".format(table_name)).fetchall()
+    table_cols = list(map( lambda x: x[1], table_info))
+
+    for col_name, col_type in col_dict.items():
+        if not(col_name in table_cols):
+            cursor.execute("alter table {} add column '{}' '{}'".format(table_name, col_name, col_type))

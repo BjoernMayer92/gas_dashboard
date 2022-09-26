@@ -5,7 +5,6 @@ import json
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-import sqlite_functions
 from sqlite_queries import *
 
 root_dir = Path.cwd().parents[0]
@@ -110,7 +109,7 @@ def query_facility_locations(facilities_df, conn, api_string, manual_data):
         manual_data (_type_): _description_
     """
     
-    sqlite_functions.add_cols(conn, table_name ="facilities", col_dict={"google_location_name":"str","lat":"float","lon":"float"})
+    add_cols(conn, table_name ="facilities", col_dict={"google_location_name":"str","lat":"float","lon":"float"})
 
     for index,facility in facilities_df.iterrows(): 
     

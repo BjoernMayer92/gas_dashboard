@@ -23,7 +23,6 @@ import agsi_api as agsi
 sql_database_file = config.SQL_DATABASE_FILE
 
 from sqlite_queries import *
-import sqlite_functions
 
 metadata_keyword_list = config.AGSI_METADATA_KEYWORD_LIST
 
