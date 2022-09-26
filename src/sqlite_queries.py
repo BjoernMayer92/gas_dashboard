@@ -42,5 +42,21 @@ WHERE eic = ?
 
 
 create_timeseries_table_query="""
-CREATE TABLE IF NOT EXISTS facilities ()
-"""
+            CREATE TABLE IF NOT EXISTS '{}' (
+                gasDayStart DATE PRIMARY KEY,
+                gasInStorage FLOAT,
+                injection FLOAT,
+                withdrawal FLOAT,
+                workingGasVolume FLOAT,
+                injectionCapacity FLOAT,
+                withdrawalCapacity FLOAT,
+                status TEXT,
+                trend FLOAT,
+                full FLOAT
+            )
+            """
+
+insert_timeseries_query = """ 
+        INSERT INTO '{}' (gasDayStart, gasInStorage, injection, withdrawal, workingGasVolume, injectionCapacity, withdrawalCapacity, status, trend, full)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
