@@ -160,43 +160,11 @@ def request_query_as_json(query_string, api_key=keys.AGSI):
 
 
 
-def curl_data_from_query_in_db(conn, query_string, table_name, extraction_keyword_list, extraction_keyword_type):
-    """_summary_
-
-    Args:
-        query_string (_type_): _description_
-        extraction_keyword_list (_type_): _description_
-        metadata_keyword_list (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    
-
-    initial_request_data = request_query_as_json(query_string)
-    number_of_pages = initial_request_data["last_page"]
-    
-    
-    # Query all pages
-    for page_number in tqdm(range(number_of_pages)):
-        query_string_page="&".join([query_string,"page="+str(page_number+1)])
-        
-        page_dictionary = request_query_as_json(query_string_page)
-         
-        for datapoint in page_dictionary["data"]:
-            datapoint_list = []
-            for keyword in extraction_keyword_list: 
-                data_tmp = datapoint[keyword]
-                if data_tmp== "-":
-                    data_tmp= np.nan
-                datapoint_list.append(extraction_keyword_type[keyword](data_tmp))
-            
-            sqlite_functions.insert_row(conn, table_name, col_name_list = extraction_keyword_list, data = datapoint_list)
-
-    conn.commit()
-
-
 def query_facility_historical_timeseries(facilities_df,conn, agsi_api_string, agsi_extraction_keyword_list, agsi_extraction_keyword_type):
+    
+    cursor = conn.cursor()
+    cursor.execute(create_timeseries_table_query)
+    conn.commit()    
     
     for index, facility in tqdm(facilities_df.iterrows()):
     
@@ -209,14 +177,6 @@ def query_facility_historical_timeseries(facilities_df,conn, agsi_api_string, ag
         
         initial_request_data = request_query_as_json(query_string)
         number_of_pages = initial_request_data["last_page"]
-
-        
-        cursor = conn.cursor()
-        cursor.execute(create_timeseries_table_query.format(facility_eic))
-        conn.commit()
-
-
-        insert_timeseries_query_facility_string = insert_timeseries_query.format(facility_eic)
 
         insert_cursor = conn.cursor()
 
@@ -237,4 +197,7 @@ def query_facility_historical_timeseries(facilities_df,conn, agsi_api_string, ag
                         value = np.nan
                     data_dict[extraction_keyword] = agsi_extraction_keyword_type[extraction_keyword](value)
 
-                insert_cursor.execute(insert_timeseries_query_facility_string,tuple(data_dict.values()))
+                data_dict["eic"] = facility_eic
+                insert_cursor.execute(insert_timeseries_query, tuple(data_dict.values()))
+            
+            conn.commit()    

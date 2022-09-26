@@ -42,8 +42,8 @@ WHERE eic = ?
 
 
 create_timeseries_table_query="""
-            CREATE TABLE IF NOT EXISTS '{}' (
-                gasDayStart DATE PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS 'Data' (
+                gasDayStart DATE,
                 gasInStorage FLOAT,
                 injection FLOAT,
                 withdrawal FLOAT,
@@ -52,13 +52,17 @@ create_timeseries_table_query="""
                 withdrawalCapacity FLOAT,
                 status TEXT,
                 trend FLOAT,
-                full FLOAT
+                full FLOAT,
+                facility_eic TEXT,
+                PRIMARY KEY (facility_eic, gasDayStart),
+                FOREIGN KEY (facility_eic)
+                    REFERENCES company (facility_eic) 
             )
             """
 
 insert_timeseries_query = """ 
-        INSERT INTO '{}' (gasDayStart, gasInStorage, injection, withdrawal, workingGasVolume, injectionCapacity, withdrawalCapacity, status, trend, full)
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO 'Data' (gasDayStart, gasInStorage, injection, withdrawal, workingGasVolume, injectionCapacity, withdrawalCapacity, status, trend, full, facility_eic)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
 def add_cols(cursor, table_name, col_dict):
