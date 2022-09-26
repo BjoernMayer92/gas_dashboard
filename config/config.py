@@ -13,6 +13,26 @@ SRC_DIR = os.path.join(ROOT_DIR,"src")
 AGSI_METADATA_KEYWORD_LIST = ["name","injectionCapacity","withdrawalCapacity"]
 AGSI_METADATA_KEYWORD_TYPE = {"name":str, "injectionCapacity": float, "withdrawalCapacity":float}
 
+AGSI_EXTRACTION_KEYWORD_UNIT_DICT = {
+    "gasDayStart": "",
+    "gasInStorage": "TWh", 
+    "injection":"GWh/d", 
+    "withdrawal":"GWh/d",
+    "workingGasVolume": "TWh",
+    "injectionCapacity": "GWh/d",
+    "withdrawalCapacity": "GWh/d",
+    "trend":"%"}
+
+AGSI_EXTRACTION_KEYWORD_LABEL_DICT = {
+    "gasDayStart" : "Day",
+    "gasInStorage": "Storage",
+    "injection" : "Injection",
+    "withdrawal": "Withdrawal",
+    "workingGasVolume": "Storage Capacity",
+    "injectionCapacity": "Injection Capacity",
+    "withdrawalCapacity": "Withdrawal Capacity",
+    "trend" : "Trend"
+}
 AGSI_EXTRACTION_KEYWORD_LIST = [
     "gasDayStart",
     "gasInStorage",

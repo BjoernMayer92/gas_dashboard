@@ -92,6 +92,33 @@ app.layout = html.Div([dl.Map(children=[
 
 
 
+y_axis_left_options = []
+for keyword in ["gasInStorage","injection","withdrawal","workingGasVolume","injectionCapacity","withdrawalCapacity"]:
+    label = config.AGSI_EXTRACTION_KEYWORD_LABEL_DICT[keyword]
+    value = keyword
+    y_axis_left_options.append({"label":label, "value":value})
+
+
+
+dropdown_y_axis_left = dcc.Dropdown( 
+    id = 'y-axis-left',
+        options = y_axis_left_options,
+        value = 'gasInStorage')
+
+
+facility_options = []
+for row,facility in facilities.iterrows():
+    label = facility["name"]
+    value = facility["eic"]
+    facility_options.append({"label":label, "value":value})
+
+
+dropdown_facility = dcc.Dropdown( 
+    id = 'facility_dd',
+        options = facility_options,
+                value = facilities.iloc[0]["eic"])
+
+
 app.layout = dbc.Container(
     [
         html.H1("Gas Storages in Germany"),
@@ -103,9 +130,13 @@ app.layout = dbc.Container(
             ],
             align="center", style= {"height":"50vh"}
         ),
+        html.Hr(),
         dbc.Row([
             dbc.Col( md=4),
-            dbc.Col( md=8),
+            dbc.Col(html.Div([
+                dropdown_y_axis_left,
+                dropdown_facility
+                ]), md=8),
         ]
         )
     ],
@@ -114,20 +145,27 @@ app.layout = dbc.Container(
 )
 
 
-@app.callback(Output('timeseries', 'figure'),Input('facilities', "click_feature"))
+@app.callback(Output(component_id = "facility_dd", component_property="value"), 
+Input(component_id = "facilities", component_property = "click_feature"))
 def facility_click(feature):
     if feature is not None:
         facility_eic = feature["properties"]["eic"]
-        facility_timeseries = timeseries[timeseries["facility_eic"]==facility_eic]
-        print(facility_timeseries)
-        fig = px.line(facility_timeseries, x='gasDayStart', y=['gasInStorage'])
-        print(feature["properties"])
-    else: 
-        fig = {}
+        return facility_eic
+
+@app.callback(Output('timeseries', 'figure'), [
+    Input(component_id = "facility_dd", component_property = "value"),
+    Input(component_id = "y-axis-left", component_property = "value" )])
+def update_timeseries(facility_eic, y_axis_left):
+    facility_timeseries = timeseries[timeseries["facility_eic"]==facility_eic]
+
+    fig = px.line(facility_timeseries, x='gasDayStart', y=[y_axis_left], labels={
+                     "gasDayStart": "Day",
+                     "value": config.AGSI_EXTRACTION_KEYWORD_LABEL_DICT[y_axis_left]+" "+ config.AGSI_EXTRACTION_KEYWORD_UNIT_DICT[y_axis_left]})
+
     return fig
 
-
 """
+
     country = hoverData["points"][0]["customdata"][0]
     company = hoverData["points"][0]["customdata"][1]
     facility = hoverData["points"][0]["customdata"][2]
