@@ -6,6 +6,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import sqlite_functions
+from sqlite_queries import *
 
 root_dir = Path.cwd().parents[0]
 conf_dir = os.path.join(root_dir,"config")
@@ -52,7 +53,7 @@ def decompose_query_string(query_string):
 
 
 
-def generate_query_string_list(data_eic_listing, api_string, country_name="Germany"):
+def query_eic_listing(conn, data_eic_listing, country_name="Germany"):
     """_summary_
 
     Args:
@@ -61,30 +62,83 @@ def generate_query_string_list(data_eic_listing, api_string, country_name="Germa
     Returns:
         _type_: _description_
     """
+
+    table_cursor = conn.cursor()
+    
+    table_cursor.execute(create_company_table_query)
+    table_cursor.execute(create_facility_table_query)
+
+
     
     company_list = data_eic_listing["SSO"]["Europe"][country_name]
-    query_string_parameter_list = []
-    query_string_parameter_dict = {}
-
+    
+    
+    company_cursor = conn.cursor()
+    
     for company in company_list:
-        query_string_parameter_dict["company"] = company["eic"]
+        company_eic = company["eic"]
+        company_name = company["name"]
+        company_short_name = company["short_name"]
+        company_url = company["url"]
+        company_country = company["data"]["country"]["code"]
+        company_type = company["data"]["type"]
+        company_image = company["image"]
+
+        company_cursor.execute(insert_company_query, (company_eic, company_name,company_short_name, company_url, company_type, company_country, company_image))
+        conn.commit()    
+        
         facility_list = company["facilities"]
+        facility_cursor = conn.cursor()
+        
         for facility in facility_list:
-            query_string_parameter_dict["facility"] = facility["eic"]
-            query_string_parameter_dict["country"] = facility["country"]["code"]
-            query_string = generate_query_string(api_string, query_string_parameter_dict)
+            facility_eic = facility["eic"]
+            facility_name = facility["name"]
+            facility_type = facility["type"]
+            facility_country = facility["country"]["code"]
             
-            query_string_parameter_list.append([
-                query_string_parameter_dict["country"],
-                query_string_parameter_dict["company"],
-                query_string_parameter_dict["facility"],
-                facility["name"],
-                query_string
-                ])
+            if (facility_type=="Storage Facility") & (not ("historical" in facility_name)):
+                facility_cursor.execute(insert_facility_query, (facility_eic, facility_name, facility_type,facility_country, company_eic))
+                conn.commit()
 
+def query_facility_locations(facilities_df, conn, api_string, manual_data): 
+    """_summary_
 
+    Args:
+        facilities_df (_type_): _description_
+        conn (_type_): _description_
+        api_string (_type_): _description_
+        manual_data (_type_): _description_
+    """
+    
+    sqlite_functions.add_cols(conn, table_name ="facilities", col_dict={"google_location_name":"str","lat":"float","lon":"float"})
 
-    return pd.DataFrame(query_string_parameter_list, columns = ["country","company","facility","name","query_string"])
+    for index,facility in facilities_df.iterrows(): 
+    
+        name = facility["name"]
+        eic = facility["eic"]
+
+        query_string_parameter_dict = {"input":name, "key":keys.GOOGLE}
+        query_string = generate_query_string(api_string, query_string_parameter_dict = query_string_parameter_dict)
+        
+        resp = requests.get(query_string)
+        resp_json = resp.json()
+        
+        status = resp_json["status"]
+        if status=="OK":
+            location_coordinates  = resp_json["results"][0]["geometry"]["location"]
+            location_name = resp_json["results"][0]["name"]
+        elif (eic in list(manual_data["eic"].keys())):
+            location_name  = manual_data["eic"][eic]["location_name"]
+            location_coordinates = {"lat":manual_data["eic"][eic]["coordinates"]["lat"],"lng":manual_data["eic"][eic]["coordinates"]["lon"]}  
+        else:
+            location_name  = "NA"
+            location_coordinates = {"lat":"NA","lng":"NA"}  
+
+        conn_data_cursor = conn.cursor()
+        conn_data_cursor.execute(insert_location_query,(location_coordinates["lat"], location_coordinates["lng"], location_name,eic))
+
+    conn.commit()
+
 
 def request_query_as_json(query_string, api_key=keys.AGSI):
     """_summary_

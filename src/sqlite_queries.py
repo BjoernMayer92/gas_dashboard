@@ -39,3 +39,8 @@ SET lat = ? ,
     google_location_name = ?
 WHERE eic = ?
 """
+
+
+create_timeseries_table_query="""
+CREATE TABLE IF NOT EXISTS facilities ()
+"""
