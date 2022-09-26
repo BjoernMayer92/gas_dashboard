@@ -3,11 +3,15 @@ import plotly.graph_objects as go
 import plotly.express as px 
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
-
+import dash_leaflet as dl
+import dash_leaflet.express as dlx
+import json
+from dash_extensions.javascript import assign
 
 from dash import html
 from dash import dcc
 from dash import Output, Input
+from datetime import date
 
 import sys
 import os
@@ -32,22 +36,44 @@ load_figure_template("darkly")
 
 con = sqlite3.connect(config.SQL_DATABASE_FILE)
 
-data = pd.read_sql_query("SELECT * from eic_listing", con)
+facilities = pd.read_sql_query("SELECT * from facilities", con)
+timeseries = pd.read_sql_query("SELECT * from data", con)
 
-fig =px.scatter_geo(data,
+print(facilities)
+
+
+
+icon_path= os.path.join(config.DATA_DIR,"assets","gas.png")
+
+#draw_icon = assign("""function(feature, latlng){
+#const gas = L.icon({iconUrl: `https://img.icons8.com/ios-filled/344/gas.png`, iconSize: [64, 48]});
+#return L.marker(latlng, {icon: gas});
+#}""")
+
+
+with open(os.path.join(config.DATA_DIR, "assets","facility_location.geojson"),"r") as file:
+    facilities_location_json = json.load(file)
+#options=dict(pointToLayer=draw_icon)
+facilities_location_geojson =  dl.GeoJSON(data=facilities_location_json, id="facilities")
+
+
+
+
+
+"""
+map =px.scatter_geo(facilities,
     lon = "lon",
     lat = "lat",
     hover_name = "name",
-    scope="europe",
-    hover_data = ["country","company","facility"])
+    hover_data = ["country","company_eic","eic"])
 
-fig.update_layout(
+map.update_layout(
     geo_scope='world',
     margin=dict(l=0, r=0, t=0, b=0),
 
 )
 
-fig.update_geos(
+map.update_geos(
     center={"lat":51.1642292, "lon":10},
     lataxis_range=[45,55],
     lonaxis_range=[5,15],
@@ -56,23 +82,63 @@ fig.update_geos(
     showcountries=True,
     )
 
+
+app.layout = html.Div([dl.Map(children=[
+    dl.TileLayer(),
+    facilities_location_geojson], 
+    style={'width': '1000px', 'height': '500px'})])
+
+"""
+
+
+
 app.layout = dbc.Container(
     [
         html.H1("Gas Storages in Germany"),
         html.Hr(),
         dbc.Row( 
             [
-                dbc.Col(dcc.Graph(id="map",responsive=True, figure=fig), md=4),
-                dbc.Col(dcc.Graph(id="timeseries"),   md=8),
+                dbc.Col(dl.Map(center=(51.1642292, 10),children=[dl.TileLayer(),facilities_location_geojson],id="map",style={'width': '100%', "height":'50vh', 'margin': "auto", "display": "block"}), md=4),
+                dbc.Col(dcc.Graph(id="timeseries",figure = {}),   md=8),
             ],
-            align="center",  
+            align="center", style= {"height":"50vh"}
         ),
+        dbc.Row([
+            dbc.Col( md=4),
+            dbc.Col( md=8),
+        ]
+        )
     ],
     fluid=True,
     className="dbc"
 )
 
 
+@app.callback(Output('timeseries', 'figure'),Input('facilities', "click_feature"))
+def facility_click(feature):
+    if feature is not None:
+        facility_eic = feature["properties"]["eic"]
+        facility_timeseries = timeseries[timeseries["facility_eic"]==facility_eic]
+        print(facility_timeseries)
+        fig = px.line(facility_timeseries, x='gasDayStart', y=['gasInStorage'])
+        print(feature["properties"])
+    else: 
+        fig = {}
+    return fig
+
+
+"""
+    country = hoverData["points"][0]["customdata"][0]
+    company = hoverData["points"][0]["customdata"][1]
+    facility = hoverData["points"][0]["customdata"][2]
+
+    timeseries_filename = "_".join([country,company,facility])+".json"
+    timeseries_path = config.DATA_AGSI_DIR
+    
+    timeseries_df = pd.read_json(os.path.join(timeseries_path, timeseries_filename))
+
+    fig = px.line(timeseries_df, x='gasDayStart', y=['workingGasVolume'])
+"""
 
 """
 app.layout = html.Div(
@@ -94,22 +160,16 @@ children=[
 ], style={"display":"flex"})
 ], style={"width":"100vw","height":"100vh"})
 
+
+
+
+
+
 """
 
-@app.callback(Output('timeseries', 'figure'),Input('map', 'hoverData'))
-def update_y_timeseries(hoverData):
-    country = hoverData["points"][0]["customdata"][0]
-    company = hoverData["points"][0]["customdata"][1]
-    facility = hoverData["points"][0]["customdata"][2]
 
-    timeseries_filename = "_".join([country,company,facility])+".json"
-    timeseries_path = config.DATA_AGSI_DIR
-    
-    timeseries_df = pd.read_json(os.path.join(timeseries_path, timeseries_filename))
 
-    fig = px.line(timeseries_df, x='gasDayStart', y=['workingGasVolume'])
 
-    return fig
 
 
 if __name__ == '__main__':
