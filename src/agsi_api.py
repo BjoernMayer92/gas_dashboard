@@ -195,3 +195,47 @@ def curl_data_from_query_in_db(conn, query_string, table_name, extraction_keywor
             sqlite_functions.insert_row(conn, table_name, col_name_list = extraction_keyword_list, data = datapoint_list)
 
     conn.commit()
+
+
+def query_facility_historical_timeseries(facilities_df,conn, agsi_api_string, agsi_extraction_keyword_list, agsi_extraction_keyword_type):
+    
+    for index, facility in tqdm(facilities_df.iterrows()):
+    
+        country = facility["country"]
+        company_eic = facility["company_eic"]
+        facility_eic = facility["eic"]
+
+        query_dict = {"country":country, "company": company_eic, "facility":facility_eic}
+        query_string = generate_query_string(agsi_api_string,query_dict)
+        
+        initial_request_data = request_query_as_json(query_string)
+        number_of_pages = initial_request_data["last_page"]
+
+        
+        cursor = conn.cursor()
+        cursor.execute(create_timeseries_table_query.format(facility_eic))
+        conn.commit()
+
+
+        insert_timeseries_query_facility_string = insert_timeseries_query.format(facility_eic)
+
+        insert_cursor = conn.cursor()
+
+
+        for page in tqdm(range(1,number_of_pages+1), leave=False):
+            query_page_dict = {"country":country, "company": company_eic, "facility":facility_eic, "page":str(page)}
+            query_page_string = generate_query_string(agsi_api_string,query_page_dict)
+
+            data_page = request_query_as_json(query_page_string)
+
+            for data_timestamp in data_page["data"]:
+                data_dict = {}
+                
+                for extraction_keyword in agsi_extraction_keyword_list:
+                    
+                    value = data_timestamp[extraction_keyword]
+                    if value=="-":
+                        value = np.nan
+                    data_dict[extraction_keyword] = agsi_extraction_keyword_type[extraction_keyword](value)
+
+                insert_cursor.execute(insert_timeseries_query_facility_string,tuple(data_dict.values()))
