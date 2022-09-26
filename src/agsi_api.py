@@ -95,7 +95,7 @@ def query_eic_listing(conn, data_eic_listing, country_name="Germany"):
             facility_type = facility["type"]
             facility_country = facility["country"]["code"]
             
-            if (facility_type=="Storage Facility") & (not ("historical" in facility_name)):
+            if (facility_type=="Storage Facility") & (not ("prior" in facility_name)):
                 facility_cursor.execute(insert_facility_query, (facility_eic, facility_name, facility_type,facility_country, company_eic))
                 conn.commit()
 
