@@ -10,9 +10,6 @@ SQL_DATABASE_FILE= os.path.join(DATA_DIR,"data.db")
 
 SRC_DIR = os.path.join(ROOT_DIR,"src")
 
-AGSI_METADATA_KEYWORD_LIST = ["name","injectionCapacity","withdrawalCapacity"]
-AGSI_METADATA_KEYWORD_TYPE = {"name":str, "injectionCapacity": float, "withdrawalCapacity":float}
-
 AGSI_EXTRACTION_KEYWORD_UNIT_DICT = {
     "gasDayStart": "",
     "gasInStorage": "TWh", 
