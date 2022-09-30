@@ -11,7 +11,8 @@ from dash_extensions.javascript import assign
 from dash import html
 from dash import dcc
 from dash import Output, Input
-from datetime import date
+from datetime import datetime, date, timedelta
+
 
 import sys
 import os
@@ -54,7 +55,8 @@ icon_path= os.path.join(config.DATA_DIR,"assets","gas.png")
 with open(os.path.join(config.DATA_DIR, "assets","facility_location.geojson"),"r") as file:
     facilities_location_json = json.load(file)
 #options=dict(pointToLayer=draw_icon)
-facilities_location_geojson =  dl.GeoJSON(data=facilities_location_json, id="facilities")
+facilities_location_geojson =  dl.GeoJSON(data=facilities_location_json, id="facilities",cluster=True,  zoomToBoundsOnClick=True,
+                   superClusterOptions={"radius": 100})
 
 
 
@@ -93,7 +95,7 @@ app.layout = html.Div([dl.Map(children=[
 
 
 y_axis_left_options = []
-for keyword in ["gasInStorage","injection","withdrawal","workingGasVolume","injectionCapacity","withdrawalCapacity"]:
+for keyword in ["gasInStorage","injection","withdrawal","workingGasVolume","full","injectionCapacity","withdrawalCapacity"]:
     label = config.AGSI_EXTRACTION_KEYWORD_LABEL_DICT[keyword]
     value = keyword
     y_axis_left_options.append({"label":label, "value":value})
@@ -102,8 +104,9 @@ for keyword in ["gasInStorage","injection","withdrawal","workingGasVolume","inje
 
 dropdown_y_axis_left = dcc.Dropdown( 
     id = 'y-axis-left',
-        options = y_axis_left_options,
-        value = 'gasInStorage')
+    options = y_axis_left_options,
+    value = 'gasInStorage',
+    style={'color': 'black'})
 
 
 facility_options = []
@@ -115,8 +118,20 @@ for row,facility in facilities.iterrows():
 
 dropdown_facility = dcc.Dropdown( 
     id = 'facility_dd',
-        options = facility_options,
-                value = facilities.iloc[0]["eic"])
+    options = facility_options,
+    value =  facility_options[3]["value"],
+    style={'color': 'black'})
+
+max_date = date(2022, 9, 24)
+min_date = date(2011, 1, 1)
+
+date_range_picker =  dcc.DatePickerRange(
+        id='date_range_picker',
+        min_date_allowed = min_date,
+        max_date_allowed = max_date,        
+        end_date=max_date,
+        start_date = min_date
+    )
 
 
 app.layout = dbc.Container(
@@ -134,11 +149,18 @@ app.layout = dbc.Container(
         dbc.Row([
             dbc.Col( md=4),
             dbc.Col(html.Div([
-                dropdown_y_axis_left,
-                dropdown_facility
-                ]), md=8),
+                html.Div([html.Label("Dataset"),dropdown_y_axis_left], style={"width": "33%", "display":"block","flex-direction":"col"}),
+                html.Div([html.Label("Facility"), dropdown_facility], style= {"width": "33%"}),
+                ], style = {"display":"flex","flex-direction":"row", "justify-content": "space-around"}), md=8),
         ]
-        )
+        ),
+        dbc.Row([
+            dbc.Col(md=4),
+            dbc.Col(html.Div([
+                html.Div([html.Label("Start Date", style={"display":"block"}), date_range_picker], style={"width": "33%", "display":"block","flex-direction":"col"}),
+                html.Div(style= {"width":"33%"})
+            ], style = {"display":"flex", "flex-direction": "row", "justify-content":"space-around"}))
+        ])
     ],
     fluid=True,
     className="dbc"
@@ -149,18 +171,28 @@ app.layout = dbc.Container(
 Input(component_id = "facilities", component_property = "click_feature"))
 def facility_click(feature):
     if feature is not None:
-        facility_eic = feature["properties"]["eic"]
-        return facility_eic
+        if feature["properties"]["cluster"]==True:
+            return "cluster"
+        else:
+            facility_eic = feature["properties"]["eic"]
+            return facility_eic
 
 @app.callback(Output('timeseries', 'figure'), [
     Input(component_id = "facility_dd", component_property = "value"),
-    Input(component_id = "y-axis-left", component_property = "value" )])
-def update_timeseries(facility_eic, y_axis_left):
-    facility_timeseries = timeseries[timeseries["facility_eic"]==facility_eic]
+    Input(component_id = "y-axis-left", component_property = "value" ),
+    Input(component_id = "date_range_picker", component_property = "start_date"),
+    Input(component_id = "date_range_picker", component_property = "end_date")])
 
-    fig = px.line(facility_timeseries, x='gasDayStart', y=[y_axis_left], labels={
-                     "gasDayStart": "Day",
-                     "value": config.AGSI_EXTRACTION_KEYWORD_LABEL_DICT[y_axis_left]+" "+ config.AGSI_EXTRACTION_KEYWORD_UNIT_DICT[y_axis_left]})
+def update_timeseries(facility_eic, y_axis_left, start_date, end_date):
+
+    facility_timeseries = timeseries[timeseries["facility_eic"]==facility_eic]
+    if facility_eic=="cluster":
+        fig = px.line()    
+    else:
+        cropped_timeseries = facility_timeseries[(facility_timeseries['gasDayStart'] > start_date) & (facility_timeseries["gasDayStart"] <= end_date)]
+        fig = px.line(cropped_timeseries, x='gasDayStart', y=[y_axis_left], labels={
+            "gasDayStart": "Day",
+            "value": config.AGSI_EXTRACTION_KEYWORD_LABEL_DICT[y_axis_left]+" "+ config.AGSI_EXTRACTION_KEYWORD_UNIT_DICT[y_axis_left]})
 
     return fig
 

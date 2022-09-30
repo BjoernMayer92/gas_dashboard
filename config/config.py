@@ -21,7 +21,8 @@ AGSI_EXTRACTION_KEYWORD_UNIT_DICT = {
     "workingGasVolume": "TWh",
     "injectionCapacity": "GWh/d",
     "withdrawalCapacity": "GWh/d",
-    "trend":"%"}
+    "trend":"%",
+    "full": "%"}
 
 AGSI_EXTRACTION_KEYWORD_LABEL_DICT = {
     "gasDayStart" : "Day",
@@ -31,7 +32,8 @@ AGSI_EXTRACTION_KEYWORD_LABEL_DICT = {
     "workingGasVolume": "Storage Capacity",
     "injectionCapacity": "Injection Capacity",
     "withdrawalCapacity": "Withdrawal Capacity",
-    "trend" : "Trend"
+    "trend" : "Trend",
+    "full" : "Fill Status"
 }
 AGSI_EXTRACTION_KEYWORD_LIST = [
     "gasDayStart",
