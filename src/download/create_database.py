@@ -24,7 +24,6 @@ sql_database_file = config.SQL_DATABASE_FILE
 
 from sqlite_queries import *
 
-metadata_keyword_list = config.AGSI_METADATA_KEYWORD_LIST
 
 if __name__ == '__main__':
 
