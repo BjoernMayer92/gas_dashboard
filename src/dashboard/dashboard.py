@@ -31,7 +31,8 @@ import config
 
 
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY], meta_tags= [{"name":"viewport","content":"width=device-width, initial-scale=1"}])
 
 load_figure_template("darkly")
 
@@ -40,57 +41,16 @@ con = sqlite3.connect(config.SQL_DATABASE_FILE)
 facilities = pd.read_sql_query("SELECT * from facilities", con)
 timeseries = pd.read_sql_query("SELECT * from data", con)
 
-print(facilities)
-
 
 
 icon_path= os.path.join(config.DATA_DIR,"assets","gas.png")
 
-#draw_icon = assign("""function(feature, latlng){
-#const gas = L.icon({iconUrl: `https://img.icons8.com/ios-filled/344/gas.png`, iconSize: [64, 48]});
-#return L.marker(latlng, {icon: gas});
-#}""")
-
 
 with open(os.path.join(config.DATA_DIR, "assets","facility_location.geojson"),"r") as file:
     facilities_location_json = json.load(file)
-#options=dict(pointToLayer=draw_icon)
+
 facilities_location_geojson =  dl.GeoJSON(data=facilities_location_json, id="facilities",cluster=True,  zoomToBoundsOnClick=True,
                    superClusterOptions={"radius": 100})
-
-
-
-
-
-"""
-map =px.scatter_geo(facilities,
-    lon = "lon",
-    lat = "lat",
-    hover_name = "name",
-    hover_data = ["country","company_eic","eic"])
-
-map.update_layout(
-    geo_scope='world',
-    margin=dict(l=0, r=0, t=0, b=0),
-
-)
-
-map.update_geos(
-    center={"lat":51.1642292, "lon":10},
-    lataxis_range=[45,55],
-    lonaxis_range=[5,15],
-    resolution=50,
-    showcoastlines=True, coastlinecolor="RebeccaPurple",
-    showcountries=True,
-    )
-
-
-app.layout = html.Div([dl.Map(children=[
-    dl.TileLayer(),
-    facilities_location_geojson], 
-    style={'width': '1000px', 'height': '500px'})])
-
-"""
 
 
 
@@ -196,51 +156,7 @@ def update_timeseries(facility_eic, y_axis_left, start_date, end_date):
 
     return fig
 
-"""
-
-    country = hoverData["points"][0]["customdata"][0]
-    company = hoverData["points"][0]["customdata"][1]
-    facility = hoverData["points"][0]["customdata"][2]
-
-    timeseries_filename = "_".join([country,company,facility])+".json"
-    timeseries_path = config.DATA_AGSI_DIR
-    
-    timeseries_df = pd.read_json(os.path.join(timeseries_path, timeseries_filename))
-
-    fig = px.line(timeseries_df, x='gasDayStart', y=['workingGasVolume'])
-"""
-
-"""
-app.layout = html.Div(
-children=[
-    html.H1(children='Gas Storages in Germany'),
-    html.Div(children='''
-        This data was provided by the AGSI.
-    '''),
-
-    html.Div(children=[
-    dcc.Graph(style={'width': '30%', 'height': '90vh'},
-        id='map',
-        figure=fig
-    ),
-    dcc.Graph(style={'width': '70%', 'height': '90vh'},
-        id='timeseries',
-        figure={}
-    )
-], style={"display":"flex"})
-], style={"width":"100vw","height":"100vh"})
-
-
-
-
-
-
-"""
-
-
-
-
-
+server = app.server
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True,host='0.0.0.0',port='8060')  
