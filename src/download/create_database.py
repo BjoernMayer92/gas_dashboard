@@ -7,7 +7,8 @@ import requests
 import numpy as np
 import pandas as pd
 
-root_dir = Path.cwd().parents[1]
+root_dir = Path(os.path.abspath(__file__)).parents[2]
+print(root_dir)
 conf_dir = os.path.join(root_dir,"config")
 from tqdm import tqdm
 
@@ -33,7 +34,6 @@ if __name__ == '__main__':
 
     query_string_eic_listing = "https://agsi.gie.eu/api/about"
     data_eic_listing = agsi.request_query_as_json(query_string_eic_listing, api_key=keys.AGSI)
-
 
     agsi.query_eic_listing(conn, data_eic_listing)
 
