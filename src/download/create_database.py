@@ -31,11 +31,15 @@ if __name__ == '__main__':
     if os.path.exists(sql_database_file):
         os.remove(sql_database_file)    
     conn = sqlite3.connect(sql_database_file)
-
+    table_cursor = conn.cursor()
+    
     query_string_eic_listing = "https://agsi.gie.eu/api/about"
     data_eic_listing = agsi.request_query_as_json(query_string_eic_listing, api_key=keys.AGSI)
-
-    agsi.query_eic_listing(conn, data_eic_listing)
+    
+    table_cursor.execute(create_company_table_query)
+    table_cursor.execute(create_facility_table_query)
+    
+    agsi.query_companies_and_facilities_from_eic_listing(conn, data_eic_listing)
 
     facilities_df = pd.read_sql("SELECT * FROM facilities", conn)
     
