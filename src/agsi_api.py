@@ -12,12 +12,12 @@ import database
 logging.basicConfig(level=logging.INFO)
 
 
-
 root_dir = Path.cwd().parents[0]
 conf_dir = os.path.join(root_dir,"config")
 
 sys.path.append(str(conf_dir))
 
+import config
 import keys
 
 def generate_query_string(api_string: str, query_string_parameter_dict: dict)-> str:
@@ -134,7 +134,7 @@ def update_facility_storage(session, facility_dict):
 
     ## Get First Page
     query_dict = {"country": country, "company": company, "facility": facility_eic}
-    query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
+    query_string = generate_query_string(config.AGSI_API_STRING,query_dict)
 
     first_page_data = request_query_as_json(query_string)
     first_date = first_page_data["data"][0]["gasDayStart"]
