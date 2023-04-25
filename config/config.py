@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+from datetime import datetime
 
 ROOT_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
@@ -19,7 +19,9 @@ AGSI_EXTRACTION_KEYWORD_UNIT_DICT = {
     "injectionCapacity": "GWh/d",
     "withdrawalCapacity": "GWh/d",
     "trend":"%",
-    "full": "%"}
+    "full": "%",
+    "latitude": "°N",
+    "longitude": "°W"}
 
 AGSI_EXTRACTION_KEYWORD_LABEL_DICT = {
     "gasDayStart" : "Day",
@@ -30,7 +32,9 @@ AGSI_EXTRACTION_KEYWORD_LABEL_DICT = {
     "injectionCapacity": "Injection Capacity",
     "withdrawalCapacity": "Withdrawal Capacity",
     "trend" : "Trend",
-    "full" : "Fill Status"
+    "full" : "Fill Status",
+    "latitude": "Latitude",
+    "longitude" : "Longitude"
 }
 AGSI_EXTRACTION_KEYWORD_LIST = [
     "gasDayStart",
@@ -42,7 +46,9 @@ AGSI_EXTRACTION_KEYWORD_LIST = [
     "withdrawalCapacity",
     "status",
     "trend",
-    "full"]
+    "full",
+    "latitude",
+    "longitude"]
 
 AGSI_EXTRACTION_KEYWORD_TYPE = {
     "gasDayStart":str,
@@ -54,7 +60,9 @@ AGSI_EXTRACTION_KEYWORD_TYPE = {
     "withdrawalCapacity": float,
     "status":str,
     "trend":float,
-    "full":float}
+    "full":float,
+    "latitude": float,
+    "longitude": float}
 
 AGSI_EXTRACTION_KEYWORD_TYPE_SQL = {"gasDayStart":"DATE","gasInStorage":"FLOAT", "injection":"FLOAT", "injection":"FLOAT","withdrawal":"FLOAT","workingGasVolume":"FLOAT","status":"CHAR","trend":"FLOAT","full":"FLOAT"}
 
