@@ -1,12 +1,14 @@
 import os, sys
 import requests
 import pandas as pd
+from datetime import datetime
 import json
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from sqlite_queries import *
 import logging
+import database
 logging.basicConfig(level=logging.INFO)
 
 
@@ -74,22 +76,20 @@ def decompose_query_string(query_string:str) -> dict:
 
 
 
-def query_companies_and_facilities_from_eic_listing(conn, data_eic_listing, company_type="SSO", type="Europe", country_name="Germany"):
-    """_summary_
+def populate_companies_and_facilities_from_eic_listing(session, data_eic_listing, company_type="SSO", type="Europe", country_name="Germany"):
+    """ This function populates the database with
 
     Args:
+        session (_type_): _description_
         data_eic_listing (_type_): _description_
-
-    Returns:
-        _type_: _description_
+        company_type (str, optional): _description_. Defaults to "SSO".
+        type (str, optional): _description_. Defaults to "Europe".
+        country_name (str, optional): _description_. Defaults to "Germany".
     """
     logging.info("query_eic_listing")
 
     company_list = data_eic_listing[company_type][type][country_name]
-    logging.info("company_list {}".format(company_list))
-    
-    company_cursor = conn.cursor()
-    
+        
     for company in company_list:
         company_eic = company["eic"]
         company_name = company["name"]
@@ -98,11 +98,18 @@ def query_companies_and_facilities_from_eic_listing(conn, data_eic_listing, comp
         company_type = company["data"]["type"]
         company_image = company["image"]
 
-        company_cursor.execute(insert_company_query, (company_eic, company_name,company_short_name, company_type, company_country, company_image))
-        conn.commit()
+        new_company = database.Company(eic = company_eic,
+                                        name = company_name,
+                                        short_name = company_short_name,
+                                        country = company_country,
+                                        type = company_type,
+                                        image = company_image)
         
+        session.add(new_company)
+        session.commit()
+
+
         facility_list = company["facilities"]
-        facility_cursor = conn.cursor()
         
         for facility in facility_list:
             facility_eic = facility["eic"]
@@ -111,90 +118,83 @@ def query_companies_and_facilities_from_eic_listing(conn, data_eic_listing, comp
             facility_country = facility["country"]["code"]
             
             if (facility_type=="Storage Facility") & (not ("prior" in facility_name)):
-                facility_cursor.execute(insert_facility_query, (facility_eic, facility_name, facility_type,facility_country, company_eic))
-                conn.commit()
-
-def query_facility_locations(facilities_df, conn, api_string, manual_data): 
-    """_summary_
-
-    Args:
-        facilities_df (_type_): _description_
-        conn (_type_): _description_
-        api_string (_type_): _description_
-        manual_data (_type_): _description_
-    """
-    
-    add_cols(conn, table_name ="facilities", col_dict={"google_location_name":"str","lat":"float","lon":"float"})
-
-    for index,facility in facilities_df.iterrows(): 
-    
-        name = facility["name"]
-        eic = facility["eic"]
-
-        query_string_parameter_dict = {"input":name, "key":keys.GOOGLE}
-        query_string = generate_query_string(api_string, query_string_parameter_dict = query_string_parameter_dict)
-        
-        resp = requests.get(query_string)
-        resp_json = resp.json()
-        
-        status = resp_json["status"]
-        if status=="OK":
-            location_coordinates  = resp_json["results"][0]["geometry"]["location"]
-            location_name = resp_json["results"][0]["name"]
-        elif (eic in list(manual_data["eic"].keys())):
-            location_name  = manual_data["eic"][eic]["location_name"]
-            location_coordinates = {"lat":manual_data["eic"][eic]["coordinates"]["lat"],"lng":manual_data["eic"][eic]["coordinates"]["lon"]}  
-        else:
-            location_name  = "NA"
-            location_coordinates = {"lat":"NA","lng":"NA"}  
-
-        conn_data_cursor = conn.cursor()
-        conn_data_cursor.execute(insert_location_query,(location_coordinates["lat"], location_coordinates["lng"], location_name,eic))
-
-    conn.commit()
-
-
-
-
-
-def query_facility_historical_timeseries(facilities_df,conn, agsi_api_string, agsi_extraction_keyword_list, agsi_extraction_keyword_type):
-    
-    cursor = conn.cursor()
-    cursor.execute(create_timeseries_table_query)
-    conn.commit()    
-    
-    for index, facility in tqdm(facilities_df.iterrows()):
-    
-        country = facility["country"]
-        company_eic = facility["company_eic"]
-        facility_eic = facility["eic"]
-
-        query_dict = {"country":country, "company": company_eic, "facility":facility_eic}
-        query_string = generate_query_string(agsi_api_string,query_dict)
-        logging.info(query_string+"\n")
-        initial_request_data = request_query_as_json(query_string)
-        number_of_pages = initial_request_data["last_page"]
+                new_facility = database.Facility( eic = facility_eic,
+                                                 name = facility_name, 
+                                                 type = facility_type,
+                                                 country = facility_country,
+                                                 company_eic = company_eic)
+                session.add(new_facility)
+                session.commit()
 
         
-        insert_cursor = conn.cursor()
+def update_facility_storage(session, facility_dict):
+    country = facility_dict.country
+    company = facility_dict.company_eic
+    facility_eic = facility_dict.eic
 
-        for page in tqdm(range(1,number_of_pages+1), leave=False):
-            query_page_dict = {"country":country, "company": company_eic, "facility":facility_eic, "page":str(page)}
-            query_page_string = generate_query_string(agsi_api_string,query_page_dict)
+    ## Get First Page
+    query_dict = {"country": country, "company": company, "facility": facility_eic}
+    query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
 
-            data_page = request_query_as_json(query_page_string)
+    first_page_data = request_query_as_json(query_string)
+    first_date = first_page_data["data"][0]["gasDayStart"]
+    last_page = first_page_data["last_page"]
+    
+    ## Get Last Page
+    query_dict = {"country": country, "company": company, "facility": facility_eic, "page":str(last_page)}
+    query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
+    last_page_data = request_query_as_json(query_string)
+    last_date = last_page_data["data"][-1]["gasDayStart"]
 
-            for data_timestamp in data_page["data"]:
-                data_dict = {}
-                
-                for extraction_keyword in agsi_extraction_keyword_list:
-                    
-                    value = data_timestamp[extraction_keyword]
-                    if value=="-":
-                        value = np.nan
-                    data_dict[extraction_keyword] = agsi_extraction_keyword_type[extraction_keyword](value)
 
-                data_dict["eic"] = facility_eic
-                insert_cursor.execute(insert_timeseries_query, tuple(data_dict.values()))
-            
-            conn.commit()    
+    first_datetime = datetime.strptime(first_date,"%Y-%m-%d")
+    last_datetime = datetime.strptime(last_date,"%Y-%m-%d")
+
+    daterange = pd.date_range(last_datetime, first_datetime)
+    for date in tqdm(daterange):
+        date = date.strftime("%Y-%m-%d")
+        storage_data = session.query(database.Storage).filter_by(facility_eic = facility_eic, gasDayStart=date).all()
+        if storage_data == []:
+            insert_storage_data_point(session, country= country, company=company, facility_eic=facility_eic, date=date)
+
+
+def insert_storage_data_point(session,country, company, facility_eic, date):
+    data_dict = query_storage_data_point(country= country, company=company, facility_eic = facility_eic, date=date)
+    new_storage = database.Storage(gasDayStart = datetime.strptime(data_dict["gasDayStart"],"%Y-%m-%d"),
+            gasInStorage = data_dict["gasInStorage"],
+            injection = data_dict["injection"],
+            withdrawal = data_dict["withdrawal"],
+            workingGasVolume = data_dict["workingGasVolume"],
+            injectionCapacity = data_dict["injectionCapacity"],
+            withdrawalCapacity = data_dict["withdrawalCapacity"],
+            status= data_dict["status"],
+            trend = data_dict["trend"],
+            full = data_dict["full"],
+            latitude = data_dict["latitude"],
+            longitude = data_dict["longitude"],
+            facility_eic = facility_eic
+            )
+    session.add(new_storage)
+    
+    session.commit()
+
+def query_storage_data_point(country, company, facility_eic, date):
+    query_dict = {"country": country, "company": company, "facility": facility_eic,"date":date}
+    query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
+
+    attempts= 0
+    while attempts < 3:
+        try:
+            data = request_query_as_json(query_string)["data"][0]
+
+            data_dict = {}
+
+            for extraction_keyword in config.AGSI_EXTRACTION_KEYWORD_LIST:
+                value = data[extraction_keyword]
+                if value=="-":
+                    value = np.nan
+                data_dict[extraction_keyword] = config.AGSI_EXTRACTION_KEYWORD_TYPE[extraction_keyword](value)
+            return data_dict
+        except Exception as e:
+            print(e)
+            attempts += 1
