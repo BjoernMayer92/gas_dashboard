@@ -38,8 +38,8 @@ load_figure_template("darkly")
 
 con = sqlite3.connect(config.SQL_DATABASE_FILE)
 
-facilities = pd.read_sql_query("SELECT * from facilities", con)
-timeseries = pd.read_sql_query("SELECT * from data", con)
+facilities = pd.read_sql_query("SELECT * from facility", con)
+timeseries = pd.read_sql_query("SELECT * from storage", con)
 
 
 

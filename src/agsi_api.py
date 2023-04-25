@@ -2,13 +2,13 @@ import os, sys
 import requests
 import pandas as pd
 from datetime import datetime
-import json
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from sqlite_queries import *
 import logging
 import database
+import sqlalchemy
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -57,7 +57,7 @@ def request_query_as_json(query_string: str, api_key:str=keys.AGSI)->dict:
     return data
 
 def decompose_query_string(query_string:str) -> dict:
-    """ THis function takes an api query string and returns a dictionary containing the properties of the query
+    """This function takes an api query string and returns a dictionary containing the properties of the query
 
     Args:
         query_string (str): Query string to be decomposed.
@@ -76,15 +76,15 @@ def decompose_query_string(query_string:str) -> dict:
 
 
 
-def populate_companies_and_facilities_from_eic_listing(session, data_eic_listing, company_type="SSO", type="Europe", country_name="Germany"):
-    """ This function populates the database with
+def populate_companies_and_facilities_from_eic_listing(session: sqlalchemy.orm.Session, data_eic_listing: dict, company_type:str="SSO", type_:str="Europe", country_name:str="Germany"):
+    """This function takes a sqlalchemy session and an eic listing dictionary and populates the Company and Facility Tables belonging to a company type , a type and a country name
 
     Args:
-        session (_type_): _description_
-        data_eic_listing (_type_): _description_
-        company_type (str, optional): _description_. Defaults to "SSO".
-        type (str, optional): _description_. Defaults to "Europe".
-        country_name (str, optional): _description_. Defaults to "Germany".
+        session (sqlalchemy.orm.Session): SQLALchemy Session of the database
+        data_eic_listing (dict): Dictionary containing the companies and facilities
+        company_type (str, optional): Company Type according to listing. Defaults to "SSO".
+        type_ (str, optional): Whether european or non european companies. Defaults to "Europe".
+        country_name (str, optional): Country of the companies. Defaults to "Germany".
     """
     logging.info("query_eic_listing")
 
@@ -126,8 +126,14 @@ def populate_companies_and_facilities_from_eic_listing(session, data_eic_listing
                 session.add(new_facility)
                 session.commit()
 
-        
-def update_facility_storage(session, facility_dict):
+def update_facility_storage(session: sqlalchemy.orm.Session, facility_dict: dict):
+    """This function updates the facility storage entries.
+
+    Args:
+        session (sqlalchemy.orm.Session): sqlalchemy session connected to the database
+        facility_dict (dict): Dictionary of the facility containing country company and facility_eic
+    """
+
     country = facility_dict.country
     company = facility_dict.company_eic
     facility_eic = facility_dict.eic
@@ -139,7 +145,7 @@ def update_facility_storage(session, facility_dict):
     first_page_data = request_query_as_json(query_string)
     first_date = first_page_data["data"][0]["gasDayStart"]
     last_page = first_page_data["last_page"]
-    
+
     ## Get Last Page
     query_dict = {"country": country, "company": company, "facility": facility_eic, "page":str(last_page)}
     query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
@@ -157,8 +163,16 @@ def update_facility_storage(session, facility_dict):
         if storage_data == []:
             insert_storage_data_point(session, country= country, company=company, facility_eic=facility_eic, date=date)
 
+def insert_storage_data_point(session: sqlalchemy.orm.Session,country:str, company:str, facility_eic:str, date:str):
+    """This function inserts a new datapoint for a given company facility and date into the database
 
-def insert_storage_data_point(session,country, company, facility_eic, date):
+    Args:
+        session (sqlalchemy.orm.Session): SQLALchemy session connected to the database
+        country (str): Name of the country
+        company (str): Name of the company
+        facility_eic (str): Facility EIC
+        date (str): String cointaining date in %y-%m-%d format
+    """
     data_dict = query_storage_data_point(country= country, company=company, facility_eic = facility_eic, date=date)
     new_storage = database.Storage(gasDayStart = datetime.strptime(data_dict["gasDayStart"],"%Y-%m-%d"),
             gasInStorage = data_dict["gasInStorage"],
@@ -175,10 +189,20 @@ def insert_storage_data_point(session,country, company, facility_eic, date):
             facility_eic = facility_eic
             )
     session.add(new_storage)
-    
     session.commit()
 
-def query_storage_data_point(country, company, facility_eic, date):
+def query_storage_data_point(country: str , company:str, facility_eic: str, date:str) -> dict:
+    """ queries the AGSI API for a given country, company facility and date
+
+    Args:
+        country (str): Country Name
+        company (str): Company EIC
+        facility_eic (str): Facility EIC
+        date (str): Date in %y-%m-%d format
+
+    Returns:
+        dict: Returns the extracted dictionary of the queried data
+    """
     query_dict = {"country": country, "company": company, "facility": facility_eic,"date":date}
     query_string = generate_query_string( config.AGSI_API_STRING,query_dict)
 

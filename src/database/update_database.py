@@ -10,7 +10,6 @@ from sqlalchemy.orm import relationship, sessionmaker
 from datetime import datetime, timedelta
 
 root_dir = Path(os.path.abspath(__file__)).parents[2]
-print(root_dir)
 conf_dir = os.path.join(root_dir,"config")
 
 
@@ -28,9 +27,6 @@ import database as database
 
 sql_database_file = config.SQL_DATABASE_FILE
 
-from sqlite_queries import *
-
-    
 
 if __name__ == '__main__':
     engine = create_engine("sqlite:///{}".format(sql_database_file))
