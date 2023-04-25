@@ -40,5 +40,5 @@ if __name__ == '__main__':
     facilities = session.query(database.Facility).all()
     
     for facility_dict in facilities:
-        agsi.update_facility_storage(session, facility)
+        agsi.update_facility_storage(session, facility_dict)
     
